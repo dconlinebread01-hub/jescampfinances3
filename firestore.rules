@@ -1,0 +1,93 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (UID)
+    // Fields:
+    //   - email: string (required)
+    //   - displayName: string (optional)
+    //   - role: string (required, ['admin', 'user'])
+    //
+    // Collection: documents
+    // Document ID: auto-generated
+    // Fields:
+    //   - date: string (ISO 8601, required)
+    //   - lpoNumber: string (required)
+    //   - storeName: string (required)
+    //   - subtotal: number (required)
+    //   - vat: number (required)
+    //   - orderTotal: number (required)
+    //   - type: string (['invoice', 'credit_note'], required)
+    //   - items: list (required)
+    //   - createdBy: string (UID, required)
+    //   - createdAt: string (ISO 8601, required)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isWhitelisted() {
+      return isAuthenticated() && 
+        (exists(/databases/$(database)/documents/whitelist/$(request.auth.token.email)) || 
+         request.auth.token.email == "dconlinebread01@gmail.com");
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "dconlinebread01@gmail.com"));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'role']) &&
+             data.email is string &&
+             data.role in ['admin', 'user'];
+    }
+
+    function isValidDocument(data) {
+      return data.keys().hasAll(['date', 'lpoNumber', 'storeName', 'subtotal', 'vat', 'orderTotal', 'type', 'createdBy', 'createdAt']) &&
+             data.date is string &&
+             data.lpoNumber is string && data.lpoNumber.size() < 100 &&
+             data.storeName is string && data.storeName.size() < 100 &&
+             data.subtotal is number &&
+             data.vat is number &&
+             data.orderTotal is number &&
+             data.type in ['invoice', 'credit_note'] &&
+             data.items is list &&
+             data.createdBy == request.auth.uid &&
+             data.createdAt is string;
+    }
+
+    // Rules
+    match /whitelist/{email} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
+      allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role && isValidUser(request.resource.data));
+    }
+
+    match /documents/{docId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidDocument(request.resource.data);
+      allow update: if isAdmin() && isValidDocument(request.resource.data);
+      allow delete: if isAdmin();
+    }
+  }
+}

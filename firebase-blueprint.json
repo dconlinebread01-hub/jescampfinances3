@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "Document": {
+      "title": "Financial Document",
+      "description": "Represents an invoice or credit note extracted from source documents.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date-time", "description": "The date of the document." },
+        "lpoNumber": { "type": "string", "description": "L.P.O Number or Return Order Number." },
+        "storeName": { "type": "string", "description": "Name of the store." },
+        "subtotal": { "type": "number", "description": "Subtotal before VAT." },
+        "vat": { "type": "number", "description": "VAT amount." },
+        "orderTotal": { "type": "number", "description": "Total order amount." },
+        "type": { "type": "string", "enum": ["invoice", "credit_note"], "description": "Type of document." },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string" },
+              "description": { "type": "string" },
+              "qty": { "type": "number" },
+              "unitPrice": { "type": "number" },
+              "netAmount": { "type": "number" }
+            }
+          }
+        },
+        "createdBy": { "type": "string", "description": "UID of the user who created this document." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the document was saved." }
+      },
+      "required": ["date", "lpoNumber", "storeName", "subtotal", "vat", "orderTotal", "type", "createdBy"]
+    },
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user information and roles.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"], "description": "User's role in the system." }
+      },
+      "required": ["email", "role"]
+    },
+    "WhitelistEntry": {
+      "title": "Whitelist Entry",
+      "description": "Represents an authorized email address.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "addedAt": { "type": "string", "format": "date-time" },
+        "addedBy": { "type": "string" }
+      },
+      "required": ["email", "addedAt", "addedBy"]
+    }
+  },
+  "firestore": {
+    "/documents/{docId}": {
+      "schema": "Document",
+      "description": "Collection of all financial documents."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user profiles."
+    },
+    "/whitelist/{email}": {
+      "schema": "WhitelistEntry",
+      "description": "Collection of authorized email addresses."
+    }
+  }
+}
