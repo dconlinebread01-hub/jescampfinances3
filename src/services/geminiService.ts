@@ -1,7 +1,21 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { DocumentType, DocumentItem } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+// Lazily instantiate the client. The GoogleGenAI constructor throws when no
+// API key is present, so creating it at module load would crash the entire app
+// (blank screen) before React renders. Defer it until extraction is requested.
+let ai: GoogleGenAI | null = null;
+
+function getClient(): GoogleGenAI {
+  if (!ai) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('Gemini API key is not configured.');
+    }
+    ai = new GoogleGenAI({ apiKey });
+  }
+  return ai;
+}
 
 export interface ExtractedData {
   date: string;
@@ -37,7 +51,7 @@ export async function extractDocumentData(
   - orderTotal: Total order amount
   - items: List of items with code, description, qty, unitPrice, netAmount`;
 
-  const response = await ai.models.generateContent({
+  const response = await getClient().models.generateContent({
     model,
     contents: [
       {
