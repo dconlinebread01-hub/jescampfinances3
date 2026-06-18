@@ -1,0 +1,17 @@
+[build.environment]
+  # Firebase's published type definitions in node_modules include sample
+  # "AIza..." key strings that Netlify's secret scanner flags as likely
+  # secrets. These are false positives — Firebase web API keys are public
+  # client-side identifiers, not secrets. Smart detection lets the scanner
+  # ignore known public library values, and omitting the "AIza" value
+  # explicitly suppresses the remaining Firebase sample strings, while our
+  # own code is still scanned.
+  SECRETS_SCAN_SMART_DETECTION_ENABLED = "true"
+  SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIza"
+
+# Single-page app fallback: serve index.html for client-side routes so that
+# refreshing or deep-linking to a route (e.g. /records) does not 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
